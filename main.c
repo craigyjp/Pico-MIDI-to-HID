@@ -12,6 +12,11 @@
 #define UART_RX_PIN 1
 #define UART_TX_PIN 0
 
+// USB HID Keyboard Keycode Definitions
+#define KEY_A       4
+#define KEY_B       5
+// Add more keycodes as needed
+
 #define LED_PIN PICO_DEFAULT_LED_PIN // Onboard LED pin
 
 struct midi_cc {
@@ -66,26 +71,37 @@ void handle_midi_cc(void)
             uart_read_blocking(UART_ID, &cc_msg.data1, 1); // Read CC number
             uart_read_blocking(UART_ID, &cc_msg.data2, 1); // Read CC value
 
-            // Send ASCII codes for CC number and value
-            char ascii_cc_num[4];
-            char ascii_cc_val[4];
-            sprintf(ascii_cc_num, "%d", cc_msg.data1);
-            sprintf(ascii_cc_val, "%d", cc_msg.data2);
-            
-            tud_hid_report(0x00, (uint8_t*)ascii_cc_num, strlen(ascii_cc_num));
-            tud_hid_report(0x00, (uint8_t*)ascii_cc_val, strlen(ascii_cc_val));
+            // Send ASCII codes for CC number and value as keyboard input
+            switch (cc_msg.data1) {
+                case 0x01:
+                    // Send 'A' key as keyboard input
+                    tud_hid_keyboard_report(0, 0, (uint8_t[]) {KEY_A});
+                    break;
+                case 0x02:
+                    // Send 'B' key as keyboard input
+                    tud_hid_keyboard_report(0, 0, (uint8_t[]) {KEY_B});
+                    break;
+                // Add more cases for other MIDI CC numbers as needed
+                default:
+                    break;
+            }
 
-                        // Check if it's the correct MIDI CC
-            if (cc_msg.data1 == 0x07) { // Example: MIDI CC number 0x07
+            // Release the key after sending
+            //tud_hid_keyboard_keycode(0, 0);
+
+            // Check if it's the correct MIDI CC
+            if (cc_msg.data1 == 0x01) { // Example: MIDI CC number 0x07
                 // Flash the LED
                     gpio_put(LED_PIN, 1); // Turn on LED
                     sleep_ms(100); // Wait 100 milliseconds
                     gpio_put(LED_PIN, 0); // Turn off LED
                     sleep_ms(100); // Wait 100 milliseconds
-            }
+            
         }
     }
 }
+}
+
 
 // USB HID Callbacks
 uint16_t tud_hid_get_report_cb(uint8_t index, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen)
