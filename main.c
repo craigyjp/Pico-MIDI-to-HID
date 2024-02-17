@@ -12,14 +12,12 @@
 #define UART_RX_PIN 1
 #define UART_TX_PIN 0
 
-// USB HID Keyboard Keycode Definitions
-#define KEY_A       4
-#define KEY_B       5
 // Add more keycodes as needed
 
 #define LED_PIN PICO_DEFAULT_LED_PIN // Onboard LED pin
 
-struct midi_cc {
+struct midi_cc
+{
     uint8_t status; // MIDI status byte
     uint8_t data1;  // MIDI data byte 1 (CC number)
     uint8_t data2;  // MIDI data byte 2 (CC value)
@@ -32,7 +30,7 @@ int main(void)
 
     // Example MIDI CC message
     uint8_t midi_cc_msg[] = {0xB0, 0x07, 0x64};
-    
+
     // Interpret the MIDI CC message
     struct midi_cc cc_msg;
     cc_msg.status = midi_cc_msg[0];
@@ -53,7 +51,10 @@ int main(void)
     while (1)
     {
         tud_task(); // tinyusb device task
-        handle_midi_cc();
+        if (tud_hid_n_ready(0))
+        {
+            handle_midi_cc();
+        }
     }
 
     return 0;
@@ -63,56 +64,137 @@ void handle_midi_cc(void)
 {
     struct midi_cc cc_msg;
 
-    if (uart_is_readable(UART_ID)) {
+    if (uart_is_readable(UART_ID))
+    {
         uart_read_blocking(UART_ID, &cc_msg.status, 1);
-
+        uint8_t kcode[6] = {0};
         // Check if it's a MIDI CC message
-        if ((cc_msg.status & 0xF0) == 0xB0) { // MIDI CC status byte starts with 0xB0
+        if ((cc_msg.status & 0xF0) == 0xB0)
+        {                                                  // MIDI CC status byte starts with 0xB0
             uart_read_blocking(UART_ID, &cc_msg.data1, 1); // Read CC number
             uart_read_blocking(UART_ID, &cc_msg.data2, 1); // Read CC value
 
-            // Send ASCII codes for CC number and value as keyboard input
-            switch (cc_msg.data1) {
-                case 0x01:
-                    // Send 'A' key as keyboard input
-                    tud_hid_keyboard_report(0, 0, (uint8_t[]) {KEY_A});
-                    break;
-                case 0x02:
-                    // Send 'B' key as keyboard input
-                    tud_hid_keyboard_report(0, 0, (uint8_t[]) {KEY_B});
-                    break;
-                // Add more cases for other MIDI CC numbers as needed
-                default:
-                    break;
+            switch (cc_msg.data1)
+            {
+            case 0x01:
+                // Send 'A' key as keyboard input
+                kcode[0] = 0x04;
+                break;
+            case 0x02:
+                // Send 'B' key as keyboard input
+                kcode[0] = 0x05;
+                break;
+            case 0x03:
+                // Send 'C' key as keyboard input
+                kcode[0] = 0x06;
+                break;
+            case 0x04:
+                // Send 'D' key as keyboard input
+                kcode[0] = 0x07;
+                break;
+            case 0x05:
+                // Send 'E' key as keyboard input
+                kcode[0] = 0x08;
+                break;
+            case 0x06:
+                // Send 'A' key as keyboard input
+                kcode[0] = 0x09;
+                break;
+            case 0x07:
+                // Send 'B' key as keyboard input
+                kcode[0] = 0x0A;
+                break;
+            case 0x08:
+                // Send 'C' key as keyboard input
+                kcode[0] = 0x0B;
+                break;
+            case 0x09:
+                // Send 'D' key as keyboard input
+                kcode[0] = 0x0C;
+                break;
+            case 0x0A:
+                // Send 'E' key as keyboard input
+                kcode[0] = 0x0D;
+                break;
+            case 0x0B:
+                // Send 'A' key as keyboard input
+                kcode[0] = 0x0E;
+                break;
+            case 0x0C:
+                // Send 'B' key as keyboard input
+                kcode[0] = 0x0F;
+                break;
+            case 0x0D:
+                // Send 'C' key as keyboard input
+                kcode[0] = 0x10;
+                break;
+            case 0x0E:
+                // Send 'D' key as keyboard input
+                kcode[0] = 0x11;
+                break;
+            case 0x0F:
+                // Send 'E' key as keyboard input
+                kcode[0] = 0x12;
+                break;
+            case 0x10:
+                // Send 'A' key as keyboard input
+                kcode[0] = 0x13;
+                break;
+            case 0x11:
+                // Send 'B' key as keyboard input
+                kcode[0] = 0x14;
+                break;
+            case 0x12:
+                // Send 'C' key as keyboard input
+                kcode[0] = 0x15;
+                break;
+            case 0x13:
+                // Send 'D' key as keyboard input
+                kcode[0] = 0x16;
+                break;
+            case 0x14:
+                // Send 'E' key as keyboard input
+                kcode[0] = 0x17;
+                break;
             }
-
-            // Release the key after sending
-            //tud_hid_keyboard_keycode(0, 0);
+            tud_hid_n_keyboard_report(0, 0, 0, kcode);
 
             // Check if it's the correct MIDI CC
-            if (cc_msg.data1 == 0x01) { // Example: MIDI CC number 0x07
+            if ((cc_msg.status & 0xF0) == 0xB0)
+            {
                 // Flash the LED
-                    gpio_put(LED_PIN, 1); // Turn on LED
-                    sleep_ms(100); // Wait 100 milliseconds
-                    gpio_put(LED_PIN, 0); // Turn off LED
-                    sleep_ms(100); // Wait 100 milliseconds
-            
+                gpio_put(LED_PIN, 1); // Turn on LED
+                sleep_ms(100);        // Wait 100 milliseconds
+                gpio_put(LED_PIN, 0); // Turn off LED
+                sleep_ms(100);        // Wait 100 milliseconds
+            }
         }
     }
+    // Release the key after sending
+    tud_hid_n_keyboard_report(0, 0, 0, NULL);
+    // cc_msg.status = 0;
+    // cc_msg.data1 = 0;
+    // cc_msg.data2 = 0;
 }
-}
-
 
 // USB HID Callbacks
-uint16_t tud_hid_get_report_cb(uint8_t index, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen)
+uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer, uint16_t reqlen)
 {
-    // Not used
+    (void)itf;
+    (void)report_id;
+    (void)report_type;
+    (void)buffer;
+    (void)reqlen;
     return 0;
 }
 
-void tud_hid_set_report_cb(uint8_t index, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize)
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize)
 {
-    // Not used
+    (void)itf;
+    (void)report_id;
+    (void)report_type;
+    (void)buffer;
+    (void)bufsize;
 }
 
 // USB Device Callbacks
@@ -126,7 +208,7 @@ void tud_umount_cb(void)
 
 void tud_suspend_cb(bool remote_wakeup_en)
 {
-    (void) remote_wakeup_en;
+    (void)remote_wakeup_en;
 }
 
 void tud_resume_cb(void)
